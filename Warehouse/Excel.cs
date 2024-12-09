@@ -114,113 +114,97 @@ public class Excel
          
     }
     
+    
     //order items (add to warehouse) && (log the order hash) --> returns orderHash
-    public string Add(List<Product> order, string catalog, string orderlog)
+    public void Add(List<Product> order, string catalog, string orderlog)
+{
+    string orderHash = "";
+    ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+    // if all products are found
+    bool allFound = true;
+
+    using (var package = new ExcelPackage(new FileInfo(catalog)))
     {
-        string orderHash;
-        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-        
-        //logging the order in orderlog.xlsx
-        using (var package = new ExcelPackage(new FileInfo(orderlog)))
+        var worksheet = package.Workbook.Worksheets[0];
+
+        //indexes --> last used row
+        int lastrow = worksheet.Dimension.End.Row;
+
+        try
         {
-            var worksheet = package.Workbook.Worksheets.Add("Orders");
-            worksheet.Cells[1, 1].Value = "ID"; 
-            worksheet.Cells[1, 2].Value = "Hash";
-            
-            //indexes -->last used row
-            int lastrow = worksheet.Dimension.End.Row;
-            try
-            {
-                //generating order hash
-                orderHash = hash.GetOrderHash(order, "Order", lastrow+1);
-                worksheet.Cells[lastrow+1, 1].Value = lastrow-1; 
-                worksheet.Cells[lastrow+1, 2].Value = orderHash;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                throw;
-            }
-            
-            // Save to file
-            package.SaveAs(new FileInfo(orderlog));
-        }
-        
-        //making changes to the catalog
-        using (var package = new ExcelPackage(new FileInfo(catalog)))
-        {
-            var worksheet = package.Workbook.Worksheets[0];
-            
-            //indexes -->last used row
-            int lastrow = worksheet.Dimension.End.Row;
-            try
+            //First, check if all products are found
+            foreach (var p in order)
             {
                 bool found = false;
                 for (int row = 2; row <= lastrow; row++)
                 {
                     var name = worksheet.Cells[row, 1].Text;
-                    var quantity = Int32.Parse(worksheet.Cells[row, 2].Text);
-                    
-                    foreach (var p in order)
+                    if (name == p.ProductName)
                     {
+                        found = true;
+                        break;  //Product found
+                    }
+                }
+
+                if (!found)
+                {
+                    //If any product is not found, set allFound to false --> exit the loop
+                    allFound = false;
+                    Console.WriteLine($"Product {p.ProductName} not found in the catalog.");
+                    break;  //Stop processing further
+                }
+            }
+
+            // If all products are found, update catalog
+            if (allFound)
+            {
+                foreach (var p in order)
+                {
+                    for (int row = 2; row <= lastrow; row++)
+                    {
+                        var name = worksheet.Cells[row, 1].Text;
                         if (name == p.ProductName)
                         {
+                            var quantity = Int32.Parse(worksheet.Cells[row, 2].Text);
                             worksheet.Cells[row, 2].Value = quantity + p.Quantity;
+                            Console.WriteLine($"{p.ProductName} : {p.Quantity} was successfully ordered");
+                            break;
                         }
                     }
                 }
-                if (found == false)
-                {
-                    Console.WriteLine("Product not found in the Catalog");
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                throw;
-            } 
-            // Save to file
-            package.SaveAs(new FileInfo(catalog));
-            //reloading products list to the updated catalog.
-            ReadCatalog(catalog);
-        }
-        return orderHash;
 
-    } 
+                // Generate the hash only if the order is valid
+                hash.OrderHash(order, catalog, orderlog);
+
+                // Save to file after processing the order
+                package.SaveAs(new FileInfo(catalog));
+
+                // Reload the catalog after saving
+                ReadCatalog(catalog);
+            }
+            else
+            {
+                // If any product was not found, the order does not go through
+                Console.WriteLine("Order was not processed due to missing product(s)");
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+    }
+}
+    
     
     //ship items (subtract from warehouse) && (log the shipment hash) --> return shipmentHash
-    public string Subtract(List<Product> order, string catalog, string shipmentlog)
+    public void Subtract(List<Product> shipment, string catalog, string shipmentlog)
     {
-        string shipmentHash;
-        
+        string shipmentHash = "";
+        bool allFound = true;
         ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-        
-        //logging the shipment in shipmentlog.xlsx
-        using (var package = new ExcelPackage(new FileInfo(shipmentlog)))
-        {
-            var worksheet = package.Workbook.Worksheets.Add("Shipments");
-            worksheet.Cells[1, 1].Value = "ID"; 
-            worksheet.Cells[1, 2].Value = "Hash";
-            
-            //indexes -->last used row
-            int lastrow = worksheet.Dimension.End.Row;
-            try
-            {
-                //generating order hash
-                shipmentHash = hash.GetOrderHash(order, "Shipment", lastrow+1);
-                worksheet.Cells[lastrow+1, 1].Value = lastrow-1; 
-                worksheet.Cells[lastrow+1, 2].Value = shipmentHash;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                throw;
-            }
-            
-            // Save to file
-            package.SaveAs(new FileInfo(shipmentlog));
-        }
-        
+
         //making changes to catalog 
         using (var package = new ExcelPackage(new FileInfo(catalog)))
         {
@@ -230,8 +214,9 @@ public class Excel
             int lastrow = worksheet.Dimension.End.Row;
             try
             {
-                foreach (var o in order)
+                foreach (var o in shipment)
                 {
+                    bool found = false;
                     for (int row = 2; row <= lastrow; row++)
                     {
                         var name = worksheet.Cells[row, 1].Text;
@@ -240,40 +225,68 @@ public class Excel
                         {
                             if (CheckAvailibility(name, o.Quantity, catalog) == (true, true))
                             {
-                                worksheet.Cells[row, 2].Value = quantity - o.Quantity;
-                                Console.WriteLine($"{o.ProductName} : {o.Quantity} was shipped\nCurrent Quantity: {worksheet.Cells[row, 2].Text}");
+                                found = true; //
+                                break;
                             }
 
                             if (CheckAvailibility(name, o.Quantity, catalog) == (true, false))
                             {
-                                Console.WriteLine("\nWe dont have enough inventory to complete this Shipment");
+                                found = false;
+                                Console.WriteLine($"\nWe dont have enough inventory to Ship: {name}"); 
+                                break;
                             }
                         }
                     }
-
-                    if (CheckAvailibility(o.ProductName, o.Quantity, catalog) == (false, true) ||
-                        CheckAvailibility(o.ProductName, o.Quantity, catalog) == (false, false))
+                    
+                    if (!found)
                     {
-                        Console.WriteLine($"\nThe item:{o.ProductName} was not found in the catalog");
+                        allFound = false;
+                        Console.WriteLine($"\nThe item:{o.ProductName} was either not found or isn't sufficiently stocked!");
                     }
                 }
+                
+                //if all the products in the list are shippable
+                if (allFound)
+                {
+                    foreach (var s in shipment)
+                    {
+                        for (int row = 2; row <= lastrow; row++)
+                        {
+                            var name = worksheet.Cells[row, 1].Text;
+                            var quantity = Int32.Parse(worksheet.Cells[row, 2].Text);
+                            if (s.ProductName == name)
+                            {
+                                worksheet.Cells[row, 2].Value = quantity - s.Quantity;
+                                Console.WriteLine(
+                                    $"{s.ProductName} : {s.Quantity} was shipped\nCurrent Quantity: {worksheet.Cells[row, 2].Text}");
+                            }
+                        }
+                    }
+                    //creating the hash onyl if the shipment is possible
+                    hash.ShipmentHash(shipment, catalog, shipmentlog);
+                    
+                    // Save to file
+                    package.SaveAs(new FileInfo(catalog));
+                    
+                    //reloading products list from catalog.
+                    ReadCatalog(catalog);
+                }
+                //if allfound ==false
+                else
+                {
+                    Console.WriteLine("Shipment was not processed, due to insufficient stock or missing product(s)");
+                }
+                
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
                 throw;
             }
-            // Save to file
-            package.SaveAs(new FileInfo(catalog));
-            //reloading products list to the updated catalog.
-            ReadCatalog(catalog);
         }
-        
-        return shipmentHash;
-         
     }
-    
-    // (found, IsThereEnoughtoOrder)
+
+    // (found, IsThereEnoughtoShip)
     public (bool,bool) CheckAvailibility(string itemname, int qty, string filename) 
     {
         ExcelPackage.LicenseContext = LicenseContext.NonCommercial;

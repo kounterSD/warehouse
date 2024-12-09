@@ -42,12 +42,12 @@ namespace Warehouse
                     //Purchase an order --> Items come into the warehouse
                     case "3":
                         Order = product.ReadInput2();
-                        Console.WriteLine($"Success!\nOrder Hash: {excel.Add(Order, catalogfile, orderfile)}");
+                        excel.Add(Order, catalogfile, orderfile);
                         break;
                     //Ship an order --> Items go out of the warehouse
                     case "4":
                         Shipment = product.ReadInput3();
-                        Console.WriteLine($"Success!\nShipment Hash: {excel.Subtract(Shipment, catalogfile, shipmentfile)}");
+                        excel.Subtract(Shipment, catalogfile, shipmentfile);
                         break;
                     case ("5"):
                         exit = true;

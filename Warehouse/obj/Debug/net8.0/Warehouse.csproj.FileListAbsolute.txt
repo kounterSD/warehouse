@@ -32,3 +32,4 @@
 /Users/panthpatel/RiderProjects/Warehouse/Warehouse/obj/Debug/net8.0/Warehouse.genruntimeconfig.cache
 /Users/panthpatel/RiderProjects/Warehouse/Warehouse/obj/Debug/net8.0/ref/Warehouse.dll
 /Users/panthpatel/RiderProjects/Warehouse/Warehouse/bin/Debug/net8.0/BCrypt.Net-Next.dll
+/Users/panthpatel/RiderProjects/Warehouse/Warehouse/obj/Debug/net8.0/Warehouse.sourcelink.json

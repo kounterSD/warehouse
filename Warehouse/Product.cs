@@ -60,7 +60,7 @@ public class Product
             string name = Console.ReadLine();
             Console.WriteLine("Item Qty:\n");
             int qty = Int32.Parse(Console.ReadLine());
-            Console.WriteLine("Type 'done' to finish the order:\n");
+            Console.WriteLine("Type 'done' to finish the order or Press 'enter' to add more items:\n");
             input = Console.ReadLine();
             
             Product p = new Product(name, qty);
@@ -87,7 +87,7 @@ public class Product
             string name = Console.ReadLine();
             Console.WriteLine("Item Qty:\n");
             int qty = Int32.Parse(Console.ReadLine());
-            Console.WriteLine("Type 'done' to finish the Shipment:\n");
+            Console.WriteLine("Type 'done' to finish the Shipment or Press 'enter' to add more items::\n");
             input = Console.ReadLine();
             
             Product p = new Product(name, qty);
